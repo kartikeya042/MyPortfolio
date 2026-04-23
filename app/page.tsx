@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Binary,
   Blocks,
@@ -128,6 +128,9 @@ const skillCategories = [
 export default function Home() {
   const [typedName, setTypedName] = useState("");
   const fullName = "Kartikeya Singh";
+  
+  // NEW STATE: Tracks form submission status for the notification
+  const [formStatus, setFormStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
 
   useEffect(() => {
     let index = 0;
@@ -141,8 +144,40 @@ export default function Home() {
     return () => window.clearInterval(timer);
   }, []);
 
+  // NEW FUNCTION: Handles silent form submission
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); // Stops the redirect
+    setFormStatus("submitting");
+    const form = e.currentTarget;
+    const data = new FormData(form);
+
+    try {
+      const response = await fetch(process.env.NEXT_PUBLIC_FORMSPREE_URL as string, {
+        method: "POST",
+        body: data,
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      if (response.ok) {
+        setFormStatus("success");
+        form.reset(); // Clear the form fields
+      } else {
+        setFormStatus("error");
+      }
+    } catch (error) {
+      setFormStatus("error");
+    }
+
+    // Hide the notification after 4 seconds
+    setTimeout(() => {
+      setFormStatus("idle");
+    }, 4000);
+  };
+
   return (
-    <div className="relative min-h-screen bg-black text-white font-sans selection:bg-white selection:text-black">
+    <div className="relative min-h-screen bg-black text-white font-sans selection:bg-white selection:text-black overflow-x-hidden">
       {/* Custom CSS for the 0.7s blinking cursor */}
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes custom-blink {
@@ -157,12 +192,33 @@ export default function Home() {
       <ParticleBackground />
       <StickyNav />
 
+      {/* CUSTOM TOAST NOTIFICATION */}
+      <AnimatePresence>
+        {(formStatus === "success" || formStatus === "error") && (
+          <motion.div
+            initial={{ opacity: 0, x: 100 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 100 }}
+            transition={{ type: "spring", stiffness: 200, damping: 20 }}
+            className="fixed bottom-8 right-8 z-50 flex items-center gap-4 border-2 border-white bg-black px-6 py-4 rounded-none shadow-[0_0_20px_rgba(255,255,255,0.15)]"
+          >
+            <div className={`flex h-6 w-6 items-center justify-center border-2 ${formStatus === "success" ? "border-white bg-white text-black" : "border-white text-white"}`}>
+              <span className="font-bold text-sm leading-none pt-[2px]">
+                {formStatus === "success" ? "✓" : "!"}
+              </span>
+            </div>
+            <p className="text-xs font-bold tracking-[0.1em] text-white uppercase">
+              {formStatus === "success" ? "Message Sent" : "Error Sending"}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <main className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-16 px-4 pb-20 md:px-8 md:pb-24">
         
-        {/* HERO SECTION - Transparent */}
+        {/* HERO SECTION */}
         <Reveal id="home" className="scroll-mt-28 border-none bg-transparent p-0 md:p-0">
           <p className="mb-6 text-xs tracking-[0.32em] text-white/72 uppercase">Portfolio</p>
-          {/* Removed the glowing hover drop-shadow from the name */}
           <h1 className="font-serif text-6xl leading-[0.95] font-black text-white md:text-8xl transition-all duration-300">
             {typedName}
             <span className="blink-cursor ml-1 inline-block text-white">_</span>
@@ -254,28 +310,22 @@ export default function Home() {
           </div>
         </Reveal>
 
-        {/* SKILLS SECTION - Updated to Flexbox for fixed small squares */}
+        {/* SKILLS SECTION */}
         <Reveal id="skills" className="border-4 border-white/20 bg-white/[0.03] backdrop-blur-md scroll-mt-28 rounded-none p-6 transition-colors duration-200 ease-out hover:border-white md:p-10">
           <h2 className="font-serif mb-8 text-3xl md:text-4xl">Technical Skills</h2>
           <div className="space-y-10">
             {skillCategories.map((category) => (
               <div key={category.title}>
                 <h3 className="text-xl font-bold mb-4 text-white">{category.title}</h3>
-                
-                {/* Changed from stretching grid to flex-wrap */}
                 <div className="flex flex-wrap gap-3 md:gap-4">
                   {category.skills.map((skill) => (
                     <motion.div
                       key={skill.name}
-                      /* Fixed height and width to keep the boxes small and perfectly square */
                       className="group relative isolate flex h-24 w-24 flex-col items-center justify-center overflow-hidden border-2 border-white/20 rounded-none transition-all duration-300 ease-out hover:border-white md:h-28 md:w-28"
                       whileHover={{ scale: 1.05 }}
                     >
                       <span className="absolute inset-0 -z-10 -translate-x-full bg-white transition-transform duration-300 ease-out group-hover:translate-x-0" />
-                      
-                      {/* Icons kept at their standard readable size */}
                       <skill.icon className="mb-2 h-6 w-6 text-white transition-colors duration-200 ease-out group-hover:text-black md:h-8 md:w-8" />
-                      
                       <p className="px-1 text-center text-[9px] leading-tight tracking-[0.05em] text-white uppercase transition-colors duration-200 ease-out group-hover:text-black md:text-[10px]">
                         {skill.name}
                       </p>
@@ -309,36 +359,42 @@ export default function Home() {
         {/* CONTACT SECTION */}
         <Reveal id="contact" className="border-4 border-white/20 bg-white/[0.03] backdrop-blur-md scroll-mt-28 rounded-none p-6 transition-colors duration-200 ease-out hover:border-white md:p-10">
           <h2 className="font-serif mb-8 text-3xl md:text-4xl">Contact</h2>
-          <form action="YOUR_FORMSPREE_URL" method="POST" className="mx-auto flex w-full max-w-2xl flex-col gap-5">
+          
+          {/* UPDATED: Form now uses onSubmit instead of action */}
+          <form onSubmit={handleSubmit} className="mx-auto flex w-full max-w-2xl flex-col gap-5">
             <input
               type="text"
               name="name"
               placeholder="Name"
               required
-              className="border-2 border-white/20 bg-transparent rounded-none px-4 py-3 text-white outline-none transition placeholder:text-white/45 focus:border-white"
+              disabled={formStatus === "submitting"}
+              className="border-2 border-white/20 bg-transparent rounded-none px-4 py-3 text-white outline-none transition placeholder:text-white/45 focus:border-white disabled:opacity-50"
             />
             <input
               type="email"
               name="email"
               placeholder="Email"
               required
-              className="border-2 border-white/20 bg-transparent rounded-none px-4 py-3 text-white outline-none transition placeholder:text-white/45 focus:border-white"
+              disabled={formStatus === "submitting"}
+              className="border-2 border-white/20 bg-transparent rounded-none px-4 py-3 text-white outline-none transition placeholder:text-white/45 focus:border-white disabled:opacity-50"
             />
             <textarea
               name="message"
               placeholder="Message"
               required
               rows={5}
-              className="border-2 border-white/20 bg-transparent resize-none rounded-none px-4 py-3 text-white outline-none transition placeholder:text-white/45 focus:border-white"
+              disabled={formStatus === "submitting"}
+              className="border-2 border-white/20 bg-transparent resize-none rounded-none px-4 py-3 text-white outline-none transition placeholder:text-white/45 focus:border-white disabled:opacity-50"
             />
             <motion.button
               type="submit"
-              className="group relative isolate overflow-hidden border-2 border-white inline-flex w-fit items-center gap-2 rounded-none px-6 py-3 text-xs tracking-[0.14em] uppercase text-white transition-colors duration-200 ease-out"
-              whileTap={{ scale: 0.98 }}
+              disabled={formStatus === "submitting"}
+              className="group relative isolate overflow-hidden border-2 border-white inline-flex w-fit items-center gap-2 rounded-none px-6 py-3 text-xs tracking-[0.14em] uppercase text-white transition-colors duration-200 ease-out disabled:opacity-50 disabled:cursor-not-allowed"
+              whileTap={formStatus === "submitting" ? {} : { scale: 0.98 }}
             >
               <span className="absolute inset-0 -z-10 -translate-x-full bg-white transition-transform duration-300 ease-out group-hover:translate-x-0" />
               <span className="relative z-10 inline-flex items-center gap-2 transition-colors duration-200 ease-out group-hover:text-black font-bold">
-                Send Message
+                {formStatus === "submitting" ? "Sending..." : "Send Message"}
                 <Send size={15} />
               </span>
             </motion.button>
