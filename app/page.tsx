@@ -231,7 +231,7 @@ export default function Home() {
             {[
               { href: "https://github.com/kartikeya042", icon: Github, label: "GitHub" },
               { href: "https://www.linkedin.com/in/kartikeya-singh-5409b7292/", icon: Linkedin, label: "LinkedIn" },
-              { href: "YOUR_INSTAGRAM_LINK_HERE", icon: Instagram, label: "Instagram" },
+              { href: "https://www.instagram.com/kartikeya_934/", icon: Instagram, label: "Instagram" },
               { href: "mailto:kartikeyasingh042@gmail.com", icon: Mail, label: "Email" },
             ].map((social) => (
               <motion.a
